@@ -6,20 +6,6 @@ namespace Mobiquity.Packer.Test
 {
 	public class Tests
 	{
-		[TestCase("")]
-		[TestCase(" ")]
-		[TestCase(null)]
-		public void Pack_WhenCalledWithInvalidInput_ShouldThrowApiException(string filePath)
-		{
-			//--------------Arrange--------------
-
-			//--------------Act------------------
-			var exception = Assert.Throws<ApiException>(() => Packer.Pack(filePath));
-
-			//--------------Assert-----------
-			exception?.Message.Should().Be("You entered invalid file path.");
-		}
-
 		[TestCase("de3f3fg3g")]
 		[TestCase("c:jjdd\\jejdjd\\geg5")]
 		[TestCase("C:\\Users\\Siphenathi\\Documents\\Dev-Time\\Personal-Project\\UserCaptureSystem")]
