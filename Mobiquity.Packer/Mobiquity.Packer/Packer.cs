@@ -15,10 +15,15 @@ namespace Mobiquity.Packer
 			var validationHandler = ValidationHandler(filePath);
 			if (InputTextValidator.TextIsNotEmpty(validationHandler))
 				throw new ApiException(validationHandler);
+
+			var allFileRows = FileProcessor.GetAllTextFileLines(filePath);
+
+			for (var rowCount = 0; rowCount < allFileRows.Length; rowCount++)
+			{
+
+			}
+
 			return "";
-
-			//Run constraints
-
 		}
 
 		private static string ValidationHandler(string filePath)

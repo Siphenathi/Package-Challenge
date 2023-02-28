@@ -13,10 +13,5 @@ namespace Mobiquity.Packer.Utility
 		{
 			return File.ReadAllLines(filePath);
 		}
-
-		public static string GetFileName(string filePath)
-		{
-			return Path.GetFileNameWithoutExtension(filePath);
-		}
 	}
 }

@@ -1,5 +1,4 @@
 ﻿using FluentAssertions;
-using Mobiquity.Packer.Model;
 using Mobiquity.Packer.Validation;
 using NUnit.Framework;
 
