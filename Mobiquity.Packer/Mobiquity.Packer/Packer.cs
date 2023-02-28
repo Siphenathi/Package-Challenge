@@ -53,7 +53,7 @@ namespace Mobiquity.Packer
 			var allFileRows = FileProcessor.GetAllTextFileLines(filePath);
 			var packageList = GetPackages(allFileRows);
 
-
+			return "";
 
 		}
 
