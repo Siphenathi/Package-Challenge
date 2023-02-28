@@ -19,5 +19,31 @@ namespace Mobiquity.Packer.Test
 			//--------------Assert-----------
 			exception?.Message.Should().Contain("No file found in this directory");
 		}
+
+		[Test]
+		public void Learn()
+		{
+			//--------------Arrange--------------
+			var filePath =
+				@"C:\Users\Siphenathi\Documents\Dev-Time\Personal-Project\Job Hunting\Mobiquity\skeleton_net\resources\input2.txt";
+			//--------------Act------------------
+			var actual = Packer.Pack(filePath);
+
+			//--------------Assert--------------
+			actual?.Should().Contain("gerg");
+		}
+
+		//[Test]
+		//public void Learn444()
+		//{
+		//	//--------------Arrange--------------
+		//	var filePath =
+		//		@"C:\Users\Siphenathi\Documents\Dev-Time\Personal-Project\Job Hunting\Mobiquity\skeleton_net\resources\input.txt";
+		//	//--------------Act------------------
+		//	var actual = Packer.Pack(filePath);
+
+		//	//--------------Assert-----------
+		//	actual?.Should().Contain("gerg");
+		//}
 	}
 }
