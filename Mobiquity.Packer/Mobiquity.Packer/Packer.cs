@@ -13,71 +13,120 @@ namespace Mobiquity.Packer
 			var validationHandler = ValidationHandler(filePath);
 			if (InputTextValidator.TextIsNotEmpty(validationHandler))
 				throw new ApiException(validationHandler);
-
-			var allFileRows = FileProcessor.GetAllTextFileLines(filePath);
-			var packageList = new List<Package>();
-
-			for (var rowCount = 0; rowCount < allFileRows.Length; rowCount++)
-			{
-				var packageColumns = PackageDataProcessor.GetPackageColumns(allFileRows[rowCount]);
-				var package = new Package
-				{
-					PackageLimit = int.Parse(PackageDataProcessor.GetPackageWeightColumn(packageColumns)),
-					Items = new List<Item>()
-				};
-				var packageItemsColumn = PackageDataProcessor.GetPackageItemsColumn(packageColumns);
-				var packageItems = PackageDataProcessor.RemoveEmptyRecords(PackageDataProcessor.GetPackageItems(packageItemsColumn));
-
-				var items = new List<Item>();
-
-				foreach (var packageItem in packageItems)
-				{
-					var currentItemSet = PackageDataProcessor.GetPackageItemSet(packageItem);
-					items.Add(new Item
-					{
-						Index = int.Parse(currentItemSet.FirstOrDefault()),
-						Weight = double.Parse(currentItemSet.ElementAtOrDefault(1)),
-						Cost = double.Parse(currentItemSet.LastOrDefault().Substring(1, currentItemSet.LastOrDefault().Length - 1))
-					});
-				}
-
-				package.Items = SortItemsInDescendingOrder(items).ToList();
-				packageList.Add(package);
-			}
-
-			return "";
+			return PackProcessorHandler(filePath);
 		}
 
-		private static string PackProcessorHandler(string filePath)
+		public static string PackProcessorHandler(string filePath)
 		{
 			var allFileRows = FileProcessor.GetAllTextFileLines(filePath);
 			var packageList = GetPackages(allFileRows);
-
-			return "";
-
+			return ExecuteRules(packageList);
 		}
+
+		public static string ExecuteRules(IEnumerable<Package> packageList)
+		{
+			var result = string.Empty;
+			foreach (var package in packageList)
+			{
+				switch (package.Items.Count)
+				{
+					case 0:
+						result += "-\n";
+						continue;
+					case 1:
+						result += $"{package.Items.FirstOrDefault()?.Index}\n";
+						continue;
+				}
+
+				//var firstItem = GetFirstItem(package.Items);
+				var firstItem = GetFirstItem(package.Items, package.PackageWeightLimit);
+				var secondItem = GetSecondItem(package.Items, firstItem, package.PackageWeightLimit);
+			}
+
+			return result;
+		}
+
+		private static Item GetFirstItem(IEnumerable<Item> items, double packageWeightLimit)
+		{
+			var firstChosenItem = items.FirstOrDefault(x => x.Weight < packageWeightLimit);
+
+			foreach (var item in items)
+			{
+				if (item.Weight > packageWeightLimit)
+					continue;
+				if (item.Cost > firstChosenItem?.Cost)
+				{
+					firstChosenItem = item;
+					continue;
+				}
+				if (!Equals(item.Cost, firstChosenItem?.Cost)) continue;
+				if (item.Weight < firstChosenItem.Weight)
+					firstChosenItem = item;
+			}
+			return firstChosenItem;
+		}
+
+		private static Item GetFirstItem(IEnumerable<Item> items)
+		{
+			var firstChosenItem = items.FirstOrDefault();
+
+			foreach (var item in items.Skip(1))
+			{
+				if (item.Cost > firstChosenItem?.Cost)
+				{
+					firstChosenItem = item;
+					continue;
+				}
+				if (!Equals(item.Cost, firstChosenItem?.Cost)) continue;
+				if (item.Weight < firstChosenItem.Weight)
+					firstChosenItem = item;
+			}
+			return firstChosenItem;
+		}
+
+		private static Item GetSecondItem(IEnumerable<Item> items, Item firstItem, double packageWeightLimit)
+		{
+			var secondChosenItem = new Item
+			{
+				Cost = 0
+			};
+
+			foreach (var item in items)
+			{
+				if (item.Weight > packageWeightLimit)
+					continue;
+				if(Equals(item.Cost, firstItem.Cost) && Equals(item.Weight, firstItem.Weight))
+					continue;
+				if (!(item.Weight + firstItem.Weight <= packageWeightLimit)) continue;
+				if (item.Cost + firstItem.Cost > firstItem.Cost + secondChosenItem.Cost)
+					secondChosenItem = item;
+			}
+			return secondChosenItem;
+		}
+
+		//private static string 
 
 		private static IEnumerable<Package> GetPackages(IEnumerable<string> allFileRows)
 		{
 			var packageList = new List<Package>();
-
 			foreach (var row in allFileRows)
 			{
 				var packageColumns = PackageDataProcessor.GetPackageColumns(row);
+				var packageWeightLimit = int.Parse(PackageDataProcessor.GetPackageWeightColumn(packageColumns));
 				var package = new Package
 				{
-					PackageLimit = int.Parse(PackageDataProcessor.GetPackageWeightColumn(packageColumns)),
+					PackageWeightLimit = packageWeightLimit,
 					Items = new List<Item>()
 				};
 				var packageItemsColumn = PackageDataProcessor.GetPackageItemsColumn(packageColumns);
 				var packageItems = PackageDataProcessor.RemoveEmptyRecords(PackageDataProcessor.GetPackageItems(packageItemsColumn));
-				package.Items = SortItemsInDescendingOrder(GetItems(packageItems)).ToList();
+				package.Items = SortItemsInDescendingOrder(GetItems(packageItems, packageWeightLimit)).ToList();
 				packageList.Add(package);
 			}
 			return packageList;
 		}
 
-		private static IEnumerable<Item> GetItems(IEnumerable<string> packageItems)
+		private static IEnumerable<Item> GetItems(IEnumerable<string> packageItems, int packageWeightLimit)
 		{
 			var items = new List<Item>();
 			if (items == null || !packageItems.Any())
@@ -86,10 +135,14 @@ namespace Mobiquity.Packer
 			foreach (var packageItem in packageItems)
 			{
 				var currentItemSet = PackageDataProcessor.GetPackageItemSet(packageItem);
+				var weight = double.Parse(currentItemSet.ElementAtOrDefault(1));
+				if (weight > packageWeightLimit)
+					continue;
+
 				items.Add(new Item
 				{
 					Index = int.Parse(currentItemSet.FirstOrDefault()),
-					Weight = double.Parse(currentItemSet.ElementAtOrDefault(1)),
+					Weight = weight,
 					Cost = double.Parse(currentItemSet.LastOrDefault().Substring(1, currentItemSet.LastOrDefault().Length - 1))
 				});
 			}
