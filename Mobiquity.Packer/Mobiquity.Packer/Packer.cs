@@ -11,159 +11,138 @@ namespace Mobiquity.Packer
 		public static string Pack(string filePath)
 		{
 			var validationHandler = ValidationHandler(filePath);
-			if (InputTextValidator.TextIsNotEmpty(validationHandler))
+			if (TextIsNotEmpty(validationHandler))
 				throw new ApiException(validationHandler);
-			return PackProcessorHandler(filePath);
+			return PackProcessorHandler(GetAllTextFileLines(filePath));
 		}
 
-		public static string PackProcessorHandler(string filePath)
+		public static string PackProcessorHandler(IEnumerable<string> allFileRows)
 		{
-			var allFileRows = FileProcessor.GetAllTextFileLines(filePath);
-			var packageList = GetPackages(allFileRows);
-			return ExecuteRules(packageList);
-		}
-
-		public static string ExecuteRules(IEnumerable<Package> packageList)
-		{
-			var result = string.Empty;
-			foreach (var package in packageList)
-			{
-				switch (package.Items.Count)
-				{
-					case 0:
-						result += "-\n";
-						continue;
-					case 1:
-						result += $"{package.Items.FirstOrDefault()?.Index}\n";
-						continue;
-				}
-
-				//var firstItem = GetFirstItem(package.Items);
-				var firstItem = GetFirstItem(package.Items, package.PackageWeightLimit);
-				var secondItem = GetSecondItem(package.Items, firstItem, package.PackageWeightLimit);
-			}
-
-			return result;
-		}
-
-		private static Item GetFirstItem(IEnumerable<Item> items, double packageWeightLimit)
-		{
-			var firstChosenItem = items.FirstOrDefault(x => x.Weight < packageWeightLimit);
-
-			foreach (var item in items)
-			{
-				if (item.Weight > packageWeightLimit)
-					continue;
-				if (item.Cost > firstChosenItem?.Cost)
-				{
-					firstChosenItem = item;
-					continue;
-				}
-				if (!Equals(item.Cost, firstChosenItem?.Cost)) continue;
-				if (item.Weight < firstChosenItem.Weight)
-					firstChosenItem = item;
-			}
-			return firstChosenItem;
-		}
-
-		private static Item GetFirstItem(IEnumerable<Item> items)
-		{
-			var firstChosenItem = items.FirstOrDefault();
-
-			foreach (var item in items.Skip(1))
-			{
-				if (item.Cost > firstChosenItem?.Cost)
-				{
-					firstChosenItem = item;
-					continue;
-				}
-				if (!Equals(item.Cost, firstChosenItem?.Cost)) continue;
-				if (item.Weight < firstChosenItem.Weight)
-					firstChosenItem = item;
-			}
-			return firstChosenItem;
-		}
-
-		private static Item GetSecondItem(IEnumerable<Item> items, Item firstItem, double packageWeightLimit)
-		{
-			var secondChosenItem = new Item
-			{
-				Cost = 0
-			};
-
-			foreach (var item in items)
-			{
-				if (item.Weight > packageWeightLimit)
-					continue;
-				if(Equals(item.Cost, firstItem.Cost) && Equals(item.Weight, firstItem.Weight))
-					continue;
-				if (!(item.Weight + firstItem.Weight <= packageWeightLimit)) continue;
-				if (item.Cost + firstItem.Cost > firstItem.Cost + secondChosenItem.Cost)
-					secondChosenItem = item;
-			}
-			return secondChosenItem;
-		}
-
-		//private static string 
-
-		private static IEnumerable<Package> GetPackages(IEnumerable<string> allFileRows)
-		{
-			var packageList = new List<Package>();
+			var results = string.Empty;
 			foreach (var row in allFileRows)
 			{
 				var packageColumns = PackageDataProcessor.GetPackageColumns(row);
 				var packageWeightLimit = int.Parse(PackageDataProcessor.GetPackageWeightColumn(packageColumns));
-				var package = new Package
-				{
-					PackageWeightLimit = packageWeightLimit,
-					Items = new List<Item>()
-				};
 				var packageItemsColumn = PackageDataProcessor.GetPackageItemsColumn(packageColumns);
-				var packageItems = PackageDataProcessor.RemoveEmptyRecords(PackageDataProcessor.GetPackageItems(packageItemsColumn));
-				package.Items = SortItemsInDescendingOrder(GetItems(packageItems, packageWeightLimit)).ToList();
-				packageList.Add(package);
+				var packageItems =
+					PackageDataProcessor.RemoveEmptyRecords(PackageDataProcessor.GetPackageItems(packageItemsColumn));
+				results += GetItemsHandler(packageItems, packageWeightLimit);
 			}
-			return packageList;
+			return results;
 		}
 
-		private static IEnumerable<Item> GetItems(IEnumerable<string> packageItems, int packageWeightLimit)
+		private static string GetItemsHandler(IEnumerable<string> packageItems, int packageWeightLimit )
 		{
-			var items = new List<Item>();
-			if (items == null || !packageItems.Any())
-				return items;
-
-			foreach (var packageItem in packageItems)
+			if (packageItems.Count() == 1)
 			{
-				var currentItemSet = PackageDataProcessor.GetPackageItemSet(packageItem);
-				var weight = double.Parse(currentItemSet.ElementAtOrDefault(1));
-				if (weight > packageWeightLimit)
-					continue;
-
-				items.Add(new Item
-				{
-					Index = int.Parse(currentItemSet.FirstOrDefault()),
-					Weight = weight,
-					Cost = double.Parse(currentItemSet.LastOrDefault().Substring(1, currentItemSet.LastOrDefault().Length - 1))
-				});
+				return GetItemWeight(packageItems.FirstOrDefault()) > packageWeightLimit ? 
+					"-\n" : $"{GetItemIndex(packageItems.FirstOrDefault())}\n";
 			}
-			return items;
+			var firstItem = GetFirstItemWithHigherCost(packageItems, packageWeightLimit);
+			if (TextIsEmpty(firstItem))
+				return "-\n";
+
+			var secondItem = GetSecondWithHigherCost(packageItems, firstItem, packageWeightLimit);
+			if (TextIsEmpty(secondItem))
+				return $"{GetItemIndex(firstItem)}\n";
+
+			return FirstItemIsSmallerThanSecondItem(GetItemIndex(firstItem), GetItemIndex(secondItem)) ? 
+				$"{GetItemIndex(firstItem)}, {GetItemIndex(secondItem)}" : 
+				$"{GetItemIndex(secondItem)}, {GetItemIndex(firstItem)}";
 		}
 
-		private static IEnumerable<Item> SortItemsInDescendingOrder(IEnumerable<Item> items)
+		private static string GetFirstItemWithHigherCost(IEnumerable<string> items, double packageWeightLimit)
 		{
-			if (items == null || !items.Any())
-				return new List<Item>();
-			return items.OrderBy(x => x.Weight).Reverse();
+			var chosenItem = items.FirstOrDefault( item => GetItemWeight(item) <= packageWeightLimit);
+			foreach (var item in items)
+			{
+				var itemWeight = GetItemWeight(item);
+				var itemCost = GetItemCost(item);
+				var chosenItemWeight = GetItemWeight(chosenItem);
+				var chosenItemCost = GetItemCost(chosenItem);
+
+				if (itemWeight > packageWeightLimit)
+					continue;
+				if (Equals(itemCost, chosenItemCost) && Equals(itemWeight, chosenItemWeight))
+					continue;
+				if (itemCost > chosenItemCost)
+				{
+					chosenItem = item;
+					continue;
+				}
+				if (!Equals(itemCost, chosenItemCost)) continue;
+				if (itemWeight < chosenItemWeight)
+					chosenItem = item;
+			}
+			return chosenItem;
+		}
+
+		private static string GetSecondWithHigherCost(IEnumerable<string> items, string firstItem, double packageWeightLimit)
+		{
+			var chosenItem = string.Empty;
+
+			foreach (var currentItem in items)
+			{
+				var currentItemWeight = GetItemWeight(currentItem);
+				var currentItemCost = GetItemCost(currentItem);
+				var chosenItemCost = GetItemCost(chosenItem);
+				var firstItemCost = GetItemCost(firstItem);
+				var firstItemWeight = GetItemWeight(firstItem);
+
+				if (currentItemWeight > packageWeightLimit)
+					continue;
+				if (Equals(currentItemCost, firstItemCost) && Equals(currentItemWeight, firstItemWeight))
+					continue;
+				if (!(currentItemWeight + firstItemWeight <= packageWeightLimit)) continue;
+				if (currentItemCost + firstItemCost > firstItemCost + chosenItemCost)
+					chosenItem = currentItem;
+			}
+			return chosenItem;
 		}
 
 		private static string ValidationHandler(string filePath)
 		{
 			var fileValidationHandler = InputPathFileValidator.FileValidationHandler(filePath);
-			if (InputTextValidator.TextIsNotEmpty(fileValidationHandler))
+			if (TextIsNotEmpty(fileValidationHandler))
 				return fileValidationHandler;
 			var fileContentValidation =
-				PackageFileContentValidator.ValidateFileContent(FileProcessor.GetAllTextFileLines(filePath));
-			return InputTextValidator.TextIsNotEmpty(fileContentValidation) ? fileContentValidation : string.Empty;
+				PackageFileContentValidator.ValidateFileContent(GetAllTextFileLines(filePath));
+			return TextIsNotEmpty(fileContentValidation) ? fileContentValidation : string.Empty;
+		}
+
+		private static bool FirstItemIsSmallerThanSecondItem(int firstItem, int secondItem)
+		{
+			return firstItem < secondItem;
+		}
+
+		private static int GetItemIndex(string item)
+		{
+			return PackageDataProcessor.GetItemIndex(item);
+		}
+
+		private static double GetItemWeight(string item)
+		{
+			return PackageDataProcessor.GetItemWeight(item);
+		}
+
+		private static double GetItemCost(string item)
+		{
+			return PackageDataProcessor.GetItemCost(item);
+		}
+
+		private static bool TextIsEmpty(string text)
+		{
+			return InputTextValidator.TextIsEmpty(text);
+		}
+
+		private static bool TextIsNotEmpty(string text)
+		{
+			return InputTextValidator.TextIsNotEmpty(text);
+		}
+
+		private static string [] GetAllTextFileLines(string filePath)
+		{
+			return FileProcessor.GetAllTextFileLines(filePath);
 		}
 	}
 }

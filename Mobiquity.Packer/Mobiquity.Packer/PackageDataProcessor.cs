@@ -22,6 +22,31 @@ namespace Mobiquity.Packer
 			return list.Where(InputTextValidator.TextIsNotEmpty).ToList();
 		}
 
+		public static int GetItemIndex(string item)
+		{
+			if (InputTextValidator.TextIsEmpty(item))
+				return 0;
+			var currentItemSet = GetPackageItemSet(item);
+			return int.Parse(InputTextValidator.TrimText(currentItemSet.FirstOrDefault()) ?? string.Empty);
+		}
+
+		public static double GetItemWeight(string item)
+		{
+			if (InputTextValidator.TextIsEmpty(item))
+				return 0;
+			var currentItemSet = GetPackageItemSet(item);
+			return double.Parse(InputTextValidator.TrimText(currentItemSet.ElementAtOrDefault(1)) ?? string.Empty);
+		}
+
+		public static double GetItemCost(string item)
+		{
+			if (InputTextValidator.TextIsEmpty(item))
+				return 0;
+			var currentItemSet = GetPackageItemSet(item);
+			var lastRecord = InputTextValidator.TrimText(currentItemSet.LastOrDefault());
+			return double.Parse(lastRecord.Substring(1, lastRecord.Length - 1));
+		}
+
 		public static string TrimText(string text)
 		{
 			return InputTextValidator.TextIsEmpty(text) ? text : text.Trim();
