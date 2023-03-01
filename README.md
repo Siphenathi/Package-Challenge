@@ -6,3 +6,9 @@
 3. double click and open it.
 5. Restore the nuggets.
 6. Run the all tests first, Please note one test should fail due to file path. Please change that to an existing file path and run a test.
+
+
+# Approach
+
+I used TDD and SOLID principle for good and quality code.
+Mostly, Single responsibility principle
