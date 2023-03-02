@@ -40,7 +40,7 @@ namespace Mobiquity.Packer.Validation
 			if (!InputTextValidator.ValueIsTheInteger(packageWeight))
 				return $"Invalid package weight limit for this row {row}";
 
-			if (int.Parse(packageWeight) < 0 || int.Parse(packageWeight) > 100)
+			if (int.Parse(packageWeight) < 1 || int.Parse(packageWeight) > 100)
 				return $"{packageWeight} is invalid package weight. Package weight must be less or equal to 100";
 			return string.Empty;
 		}
@@ -66,10 +66,15 @@ namespace Mobiquity.Packer.Validation
 				if (!InputTextValidator.ValueIsDouble(currentItemSet.ElementAtOrDefault(1)))
 					return $"Invalid weight for itemSet ({currentItemSetRow}) in row {rowCount + 1}";
 
+				if(double.Parse(currentItemSet.ElementAtOrDefault(1)) < 1 || int.Parse(currentItemSet.ElementAtOrDefault(1)) > 100)
+					return $"{currentItemSet.ElementAtOrDefault(1)} is invalid package weight in row {rowCount + 1}. Item weight must be less or equal to 100";
+
 				var currentItemCost = InputTextValidator.TrimText(currentItemSet.LastOrDefault());
 				var itemCost = currentItemCost.Substring(1, currentItemCost.Length - 1);
 				if (!InputTextValidator.ValueIsTheInteger(itemCost))
 					return $"Invalid cost for itemSet ({currentItemSetRow}) in row {rowCount + 1}";
+				if(int.Parse(itemCost) < 1 || int.Parse(itemCost) > 100)
+					return $"{itemCost} is invalid item cost in row {rowCount + 1}. Item cost must be less or equal to 100";
 			}
 			return string.Empty;
 		}
