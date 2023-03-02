@@ -73,6 +73,7 @@ namespace Mobiquity.Packer.Validation
 				var itemCost = currentItemCost.Substring(1, currentItemCost.Length - 1);
 				if (!InputTextValidator.ValueIsTheInteger(itemCost))
 					return $"Invalid cost for itemSet ({currentItemSetRow}) in row {rowCount + 1}";
+
 				if(int.Parse(itemCost) < 1 || int.Parse(itemCost) > 100)
 					return $"{itemCost} is invalid item cost in row {rowCount + 1}. Item cost must be less or equal to 100";
 			}
